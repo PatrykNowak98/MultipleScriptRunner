@@ -1,6 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
+﻿using System.Diagnostics;
+using System.Text.RegularExpressions;
 
 class Program
 {
@@ -31,19 +30,48 @@ class Program
     {
         try
         {
-            // Get all script files in the folder
             string[] scriptFiles = Directory.GetFiles(folderPath, "*.sql");
 
             foreach (string scriptFile in scriptFiles)
             {
                 try
                 {
-                    // Construct the output file name
-                    string baseFileName = Path.GetFileNameWithoutExtension(scriptFile);
-                    string outputFileName = Path.Combine(outputFolder, $"{baseFileName}_output.txt");
+                    string scriptContent = File.ReadAllText(scriptFile);
 
-                    // Run sqlcmd command to execute the script and redirect output to a file
-                    string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{scriptFile}\" -o \"{outputFileName}\"";
+                    // Extract table name from the first INSERT statement
+                    string tableName = ExtractTableName(scriptContent);
+
+                    // If a valid table name is found, modify the script content
+                    if (!string.IsNullOrEmpty(tableName))
+                    {
+                        scriptContent = scriptContent.Insert(scriptContent.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase),
+                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}");
+
+                        // Find the index of "SET IDENTITY_INSERT {tableName} OFF"
+                        int indexOfIdentityInsert = scriptContent.IndexOf($"SET IDENTITY_INSERT {tableName} OFF", StringComparison.OrdinalIgnoreCase);
+
+                        // If the index is found, insert the ALTER TABLE statement before it
+                        if (indexOfIdentityInsert != -1)
+                        {
+                            scriptContent = scriptContent.Insert(indexOfIdentityInsert,
+                                $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}");
+
+                            if (tableName == "dbo.Client")
+                            {
+                                string editedQueryFile = Path.Combine(outputFolder, "Edited_Query.txt");
+                                File.WriteAllText(editedQueryFile, scriptContent);
+                                Console.WriteLine($"Edited query for dbo.Client written to: {editedQueryFile}");
+                            }
+                        }
+                    }
+
+                    // Save the modified script content to a temporary file
+                    string tempScriptFile = Path.Combine(outputFolder, "temp.sql");
+                    File.WriteAllText(tempScriptFile, scriptContent);
+
+                    // Run sqlcmd command to execute the modified script and redirect output to a file
+                    string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
+                    string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     ProcessStartInfo psi = new ProcessStartInfo(sqlcmdPath, commandArguments);
                     psi.RedirectStandardOutput = true;
                     psi.UseShellExecute = false;
@@ -57,6 +85,9 @@ class Program
 
                         Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
                     }
+
+                    // Delete the temporary script file
+                    File.Delete(tempScriptFile);
                 }
                 catch (Exception ex)
                 {
@@ -68,5 +99,17 @@ class Program
         {
             Console.WriteLine($"Error: {ex.Message}");
         }
+    }
+
+    static string ExtractTableName(string scriptContent)
+    {
+        // Use a regular expression to find the first INSERT statement and extract the table name
+        Match match = Regex.Match(scriptContent, @"INSERT\s+(?:INTO\s+)?\s*(\w+\.\w+|\w+)", RegexOptions.IgnoreCase);
+        if (match.Success)
+        {
+            return match.Groups[1].Value;
+        }
+
+        return null;
     }
 }
