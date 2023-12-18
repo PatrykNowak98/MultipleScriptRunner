@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using System.IO;
 using System.Text.RegularExpressions;
 
 class Program
@@ -12,7 +13,7 @@ class Program
         string scriptsFolder = @"C:\Users\patry\Desktop\Export";
 
         // Replace with the path to sqlcmd executable (adjust the path accordingly)
-        string sqlcmdPath = @"C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\sqlcmd.exe";
+        string sqlcmdPath = @"C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\SQLCMD.EXE";
 
         // Create an output folder in the script folder
         string outputFolder = Path.Combine(scriptsFolder, "Output");
@@ -44,8 +45,8 @@ class Program
                     // If a valid table name is found, modify the script content
                     if (!string.IsNullOrEmpty(tableName))
                     {
-                        scriptContent = scriptContent.Insert(scriptContent.IndexOf("INSERT", StringComparison.OrdinalIgnoreCase),
-                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}");
+                        // Modify the INSERT statement
+                        scriptContent = scriptContent.Replace($"INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}INSERT {tableName} ON");
 
                         // Find the index of "SET IDENTITY_INSERT {tableName} OFF"
                         int indexOfIdentityInsert = scriptContent.IndexOf($"SET IDENTITY_INSERT {tableName} OFF", StringComparison.OrdinalIgnoreCase);
@@ -55,13 +56,13 @@ class Program
                         {
                             scriptContent = scriptContent.Insert(indexOfIdentityInsert,
                                 $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}");
+                        }
 
-                            if (tableName == "dbo.Client")
-                            {
-                                string editedQueryFile = Path.Combine(outputFolder, "Edited_Query.txt");
-                                File.WriteAllText(editedQueryFile, scriptContent);
-                                Console.WriteLine($"Edited query for dbo.Client written to: {editedQueryFile}");
-                            }
+                        if (tableName == "dbo.Client")
+                        {
+                            string editedQueryFile = Path.Combine(outputFolder, "Edited_Query.txt");
+                            File.WriteAllText(editedQueryFile, scriptContent);
+                            Console.WriteLine($"Edited query for dbo.Client written to: {editedQueryFile}");
                         }
                     }
 
