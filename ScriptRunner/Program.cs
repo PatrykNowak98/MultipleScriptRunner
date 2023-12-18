@@ -7,9 +7,11 @@ class Program
     static void Main()
     {
         // Replace with your actual SQL Server connection string
+        //string connectionString = "Data Source=(localdb)\\local;Initial Catalog=RFSMZ1;Integrated Security=True;";
         string connectionString = "Server=localhost;Database=RFSMZ1;User Id=rufus;Password=rufus123;";
 
         // Replace with the path to the folder containing your scripts
+        //string scriptsFolder = @"D:\Praktyki\Fork\bravura\Rufus\Database\Export";
         string scriptsFolder = @"C:\Users\patry\Desktop\Export";
 
         // Replace with the path to sqlcmd executable (adjust the path accordingly)
@@ -32,21 +34,21 @@ class Program
         try
         {
             string[] scriptFiles = Directory.GetFiles(folderPath, "*.sql");
-
+            int i = 0;
             foreach (string scriptFile in scriptFiles)
             {
+                i++;
                 try
                 {
                     string scriptContent = File.ReadAllText(scriptFile);
 
-                    // Extract table name from the first INSERT statement
-                    string tableName = ExtractTableName(scriptContent);
-
-                    // If a valid table name is found, modify the script content
-                    if (!string.IsNullOrEmpty(tableName))
+                    // If a valid table name is found, modify the script content 
+                    if (Path.GetFileName(scriptFile).ToLower().StartsWith("dbo"))
                     {
-                        // Modify the INSERT statement
-                        scriptContent = scriptContent.Replace($"INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}INSERT {tableName} ON");
+                        // Extract table name from the first INSERT statement
+                        string tableName = ExtractTableName(scriptContent);
+                        //scriptContent = scriptContent.Replace($"INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}INSERT {tableName} ON");
+                        scriptContent = scriptContent.Replace($"SET IDENTITY_INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}SET IDENTITY_INSERT {tableName} ON");
 
                         // Find the index of "SET IDENTITY_INSERT {tableName} OFF"
                         int indexOfIdentityInsert = scriptContent.IndexOf($"SET IDENTITY_INSERT {tableName} OFF", StringComparison.OrdinalIgnoreCase);
@@ -55,10 +57,10 @@ class Program
                         if (indexOfIdentityInsert != -1)
                         {
                             scriptContent = scriptContent.Insert(indexOfIdentityInsert,
-                                $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}");
+                                $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}");
                         }
 
-                        if (tableName == "dbo.Client")
+                        if (tableName == "dbo.Client" || tableName == "RFSMZ1.dbo.Client")
                         {
                             string editedQueryFile = Path.Combine(outputFolder, "Edited_Query.txt");
                             File.WriteAllText(editedQueryFile, scriptContent);
@@ -72,19 +74,28 @@ class Program
 
                     // Run sqlcmd command to execute the modified script and redirect output to a file
                     string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
+                    //string commandArguments = $"sqlcmd -S \"(localdb)\\local\" -d RFSMZ1 -E -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
-                    ProcessStartInfo psi = new ProcessStartInfo(sqlcmdPath, commandArguments);
-                    psi.RedirectStandardOutput = true;
-                    psi.UseShellExecute = false;
-                    psi.CreateNoWindow = true;
-
-                    using (Process process = new Process())
+                    // Set up the process start info
+                    //Console.WriteLine("here");
+                    ProcessStartInfo psi = new ProcessStartInfo
                     {
-                        process.StartInfo = psi;
-                        process.Start();
-                        process.WaitForExit();
+                        FileName = "cmd.exe",
+                        RedirectStandardInput = true,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
 
-                        Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
+                    using (Process process = new Process { StartInfo = psi })
+                    {
+                        process.Start();
+                        process.StandardInput.WriteLine(commandArguments);
+                        process.StandardInput.WriteLine("exit");
+                        process.WaitForExit();
+                        //Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
+                        Console.WriteLine($"({i * 100 / scriptFiles.Length}%) {Path.GetFileName(scriptFile)}");
                     }
 
                     // Delete the temporary script file
@@ -105,8 +116,8 @@ class Program
     static string ExtractTableName(string scriptContent)
     {
         // Use a regular expression to find the first INSERT statement and extract the table name
-        Match match = Regex.Match(scriptContent, @"INSERT\s+(?:INTO\s+)?\s*(\w+\.\w+|\w+)", RegexOptions.IgnoreCase);
-        if (match.Success)
+        Match match = Regex.Match(scriptContent, @"INSERT\s+(?i:INTO\s+)?\s*([a-zA-Z_]\w*\.[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?|\w+)", RegexOptions.IgnoreCase);
+        if (match.Success && match.Groups[1].Value.ToLower() != "into")
         {
             return match.Groups[1].Value;
         }
