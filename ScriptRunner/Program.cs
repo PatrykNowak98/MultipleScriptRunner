@@ -74,28 +74,19 @@ class Program
 
                     // Run sqlcmd command to execute the modified script and redirect output to a file
                     string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
-                    //string commandArguments = $"sqlcmd -S \"(localdb)\\local\" -d RFSMZ1 -E -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
-                    // Set up the process start info
-                    //Console.WriteLine("here");
-                    ProcessStartInfo psi = new ProcessStartInfo
-                    {
-                        FileName = "cmd.exe",
-                        RedirectStandardInput = true,
-                        RedirectStandardOutput = true,
-                        RedirectStandardError = true,
-                        UseShellExecute = false,
-                        CreateNoWindow = true
-                    };
+                    ProcessStartInfo psi = new ProcessStartInfo(sqlcmdPath, commandArguments);
+                    psi.RedirectStandardOutput = true;
+                    psi.UseShellExecute = false;
+                    psi.CreateNoWindow = true;
 
-                    using (Process process = new Process { StartInfo = psi })
+                    using (Process process = new Process())
                     {
+                        process.StartInfo = psi;
                         process.Start();
-                        process.StandardInput.WriteLine(commandArguments);
-                        process.StandardInput.WriteLine("exit");
                         process.WaitForExit();
-                        //Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
-                        Console.WriteLine($"({i * 100 / scriptFiles.Length}%) {Path.GetFileName(scriptFile)}");
+
+                        Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
                     }
 
                     // Delete the temporary script file
