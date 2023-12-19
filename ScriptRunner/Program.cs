@@ -4,15 +4,18 @@ using System.Text.RegularExpressions;
 
 class Program
 {
+    static bool PanWlasciciel=true; //Czy Pan Wlasciciel repo odpala program czy ten drugi mily Pan?
     static void Main()
     {
         // Replace with your actual SQL Server connection string
-        //string connectionString = "Data Source=(localdb)\\local;Initial Catalog=RFSMZ1;Integrated Security=True;";
-        string connectionString = "Server=localhost;Database=RFSMZ1;User Id=rufus;Password=rufus123;";
+        string connectionString = "Server=localhost;Database=RFSMZ1;User Id=rufus;Password=rufus123;"; ;
+        if(!PanWlasciciel)
+            connectionString = "Data Source=(localdb)\\local;Initial Catalog=RFSMZ1;Integrated Security=True;";
 
         // Replace with the path to the folder containing your scripts
-        //string scriptsFolder = @"D:\Praktyki\Fork\bravura\Rufus\Database\Export";
         string scriptsFolder = @"C:\Users\patry\Desktop\Export";
+        if (!PanWlasciciel)
+            scriptsFolder = @"D:\Praktyki\Fork\bravura\Rufus\Database\Export\aa";
 
         // Replace with the path to sqlcmd executable (adjust the path accordingly)
         string sqlcmdPath = @"C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\SQLCMD.EXE";
@@ -83,21 +86,48 @@ class Program
 
                     // Run sqlcmd command to execute the modified script and redirect output to a file
                     string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
-                    string commandArguments = $"-S localhost -d RFSMZ1 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
-                    ProcessStartInfo psi = new ProcessStartInfo(sqlcmdPath, commandArguments);
-                    psi.RedirectStandardOutput = true;
-                    psi.UseShellExecute = false;
-                    psi.CreateNoWindow = true;
 
-                    using (Process process = new Process())
+                    string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
+                    if (!PanWlasciciel)
+                        commandArguments = $"sqlcmd -S \"(localdb)\\local\" -d RFSMZ1 -E -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
+                    // Set up the process start info
+                    if (!PanWlasciciel)
                     {
-                        process.StartInfo = psi;
-                        process.Start();
-                        process.WaitForExit();
+                        ProcessStartInfo psi = new ProcessStartInfo
+                        {
+                            FileName = "cmd.exe",
+                            RedirectStandardInput = true,
+                            RedirectStandardOutput = true,
+                            RedirectStandardError = true,
+                            UseShellExecute = false,
+                            CreateNoWindow = true
+                        };
 
-                        Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
+                        using (Process process = new Process { StartInfo = psi })
+                        {
+                            process.Start();
+                            process.StandardInput.WriteLine(commandArguments);
+                            process.StandardInput.WriteLine("exit");
+                            process.WaitForExit();
+                            //Console.WriteLine($"Script {Path.GetFileName(scriptFile)} executed successfully. Output written to {outputFileName}");
+                            Console.WriteLine($"({i * 100 / scriptFiles.Length}%) {Path.GetFileName(scriptFile)}");
+                        }
                     }
+                    else
+                    {
+                        ProcessStartInfo psi = new ProcessStartInfo(sqlcmdPath, commandArguments);
+                        psi.RedirectStandardOutput = true;
+                        psi.UseShellExecute = false;
+                        psi.CreateNoWindow = true;
 
+                        using (Process process = new Process())
+                        {
+                            process.StartInfo = psi;
+                            process.Start();
+                            process.WaitForExit();
+                            Console.WriteLine($"({i * 100 / scriptFiles.Length}%) {Path.GetFileName(scriptFile)}");
+                        }
+                    }
                     // Delete the temporary script file
                     File.Delete(tempScriptFile);
                 }
