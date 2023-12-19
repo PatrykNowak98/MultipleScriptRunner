@@ -59,18 +59,36 @@ class Program
                     {
                         // Extract table name from the first INSERT statement
                         string tableName = ExtractTableName(scriptContent);
-                        //scriptContent = scriptContent.Replace($"INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}INSERT {tableName} ON");
-                        scriptContent = scriptContent.Replace($"SET IDENTITY_INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}SET IDENTITY_INSERT {tableName} ON");
+
+                        // Replace the first occurrence
+                        int firstIndex = scriptContent.IndexOf($"INSERT {tableName}");
+                        if (firstIndex != -1)
+                        {
+                            scriptContent = scriptContent.Substring(0, firstIndex) +
+                                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}" +
+                                            scriptContent.Substring(firstIndex + $"INSERT {tableName}".Length);
+                        }
+
+                        // Replace the last occurrence
+                        int lastIndex = scriptContent.LastIndexOf($"INSERT {tableName}");
+                        if (lastIndex != -1 && lastIndex != firstIndex)
+                        {
+                            scriptContent = scriptContent.Substring(0, lastIndex) +
+                                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}" +
+                                            scriptContent.Substring(lastIndex + $"INSERT {tableName}".Length);
+                        }
+
+                        //scriptContent = scriptContent.Replace($"SET IDENTITY_INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}SET IDENTITY_INSERT {tableName} ON");
 
                         // Find the index of "SET IDENTITY_INSERT {tableName} OFF"
-                        int indexOfIdentityInsert = scriptContent.IndexOf($"SET IDENTITY_INSERT {tableName} OFF", StringComparison.OrdinalIgnoreCase);
+                        //int indexOfIdentityInsert = scriptContent.IndexOf($"SET IDENTITY_INSERT {tableName} OFF", StringComparison.OrdinalIgnoreCase);
 
                         // If the index is found, insert the ALTER TABLE statement before it
-                        if (indexOfIdentityInsert != -1)
-                        {
-                            scriptContent = scriptContent.Insert(indexOfIdentityInsert,
-                                $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}");
-                        }
+                        //if (indexOfIdentityInsert != -1)
+                        //{
+                        //    scriptContent = scriptContent.Insert(indexOfIdentityInsert,
+                        //        $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}");
+                        //}
 
                         if (tableName == "dbo.Client" || tableName == "RFSMZ1.dbo.Client")
                         {
