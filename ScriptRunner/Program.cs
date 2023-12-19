@@ -27,6 +27,15 @@ class Program
             Console.WriteLine($"Execution Round: {i + 1}");
             ExecuteScriptsInFolder(connectionString, scriptsFolder, outputFolder, sqlcmdPath);
         }
+
+        // Remove errors containing "Cannot insert duplicate key in object"
+        RemoveSpecificErrors(outputFolder, "Cannot insert duplicate key in object");
+
+        // Remove errors containing "There is already an object named"
+        RemoveSpecificErrors(outputFolder, "There is already an object named");
+
+        // Remove errors containing "The statement has been terminated"
+        RemoveSpecificErrors(outputFolder, "The statement has been terminated");
     }
 
     static void ExecuteScriptsInFolder(string connectionString, string folderPath, string outputFolder, string sqlcmdPath)
@@ -74,7 +83,7 @@ class Program
 
                     // Run sqlcmd command to execute the modified script and redirect output to a file
                     string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
-                    string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
+                    string commandArguments = $"-S localhost -d RFSMZ1 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     ProcessStartInfo psi = new ProcessStartInfo(sqlcmdPath, commandArguments);
                     psi.RedirectStandardOutput = true;
                     psi.UseShellExecute = false;
@@ -114,5 +123,50 @@ class Program
         }
 
         return null;
+    }
+
+    static void RemoveSpecificErrors(string outputFolder, string errorMessage)
+    {
+        try
+        {
+            string[] outputFiles = Directory.GetFiles(outputFolder, "*_output.txt");
+
+            foreach (string outputFile in outputFiles)
+            {
+                try
+                {
+                    string[] lines = File.ReadAllLines(outputFile);
+                    bool errorFound = false;
+
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        // Check if the line contains the specified error message
+                        if (lines[i].Contains(errorMessage))
+                        {
+                            // Remove the current line and the line above it
+                            lines[i] = "";
+                            if (i > 0) lines[i - 1] = "";
+
+                            errorFound = true;
+                        }
+                    }
+
+                    if (errorFound)
+                    {
+                        // Write the modified content back to the file
+                        File.WriteAllLines(outputFile, lines);
+                        Console.WriteLine($"Errors removed from: {outputFile}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error processing output file {Path.GetFileName(outputFile)}: {ex.Message}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
     }
 }
