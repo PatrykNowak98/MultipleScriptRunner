@@ -61,21 +61,26 @@ class Program
                         string tableName = ExtractTableName(scriptContent);
 
                         // Replace the first occurrence
-                        int firstIndex = scriptContent.IndexOf($"INSERT {tableName}");
+                        int firstIndex = scriptContent.IndexOf($"INSERT {tableName}(");
                         if (firstIndex != -1)
                         {
                             scriptContent = scriptContent.Substring(0, firstIndex) +
                                             $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}" +
-                                            scriptContent.Substring(firstIndex + $"INSERT {tableName}".Length);
+                                            scriptContent.Substring(firstIndex);
                         }
 
                         // Replace the last occurrence
-                        int lastIndex = scriptContent.LastIndexOf($"INSERT {tableName}");
+                        int lastIndex = scriptContent.LastIndexOf($"INSERT {tableName}(");
                         if (lastIndex != -1 && lastIndex != firstIndex)
                         {
-                            scriptContent = scriptContent.Substring(0, lastIndex) +
-                                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL; GO{Environment.NewLine}" +
-                                            scriptContent.Substring(lastIndex + $"INSERT {tableName}".Length);
+                            var a = scriptContent.Substring(lastIndex);
+                            //int b = a.IndexOf($"GO", StringComparison.Ordinal);
+                            Match match = Regex.Match(a, $@"\b{Regex.Escape("GO")}\b");
+
+                            if (match.Success)
+                            {
+                                a = a.Substring(0, match.Index) + $"ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL; GO{Environment.NewLine}" + a.Substring(match.Index);
+                            }
                         }
 
                         //scriptContent = scriptContent.Replace($"SET IDENTITY_INSERT {tableName} ON", $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}SET IDENTITY_INSERT {tableName} ON");
