@@ -8,17 +8,17 @@ class Program
     static void Main()
     {
         // Replace with your actual SQL Server connection string
-        string connectionString = "Server=localhost;Database=RFSMZ1;User Id=rufus;Password=rufus123;"; ;
+        string connectionString = "Server=dbServer;Database=yourDatabase;User Id=userId;Password=password;"; ;
         if(!PanWlasciciel)
-            connectionString = "Data Source=(localdb)\\local;Initial Catalog=RFSMZ1;Integrated Security=True;";
+            connectionString = "Data Source=localServer;Initial Catalog=database;Integrated Security=True;";
 
         // Replace with the path to the folder containing your scripts
-        string scriptsFolder = @"C:\Users\patry\Desktop\Export";
+        string scriptsFolder = @"ScriptFolderPath";
         if (!PanWlasciciel)
-            scriptsFolder = @"D:\Praktyki\Fork\bravura\Rufus\Database\Export\aa";
+            scriptsFolder = @"ScriptFolderPath";
 
         // Replace with the path to sqlcmd executable (adjust the path accordingly)
-        string sqlcmdPath = @"C:\Program Files\Microsoft SQL Server\Client SDK\ODBC\170\Tools\Binn\SQLCMD.EXE";
+        string sqlcmdPath = @"sqlCMDPath";
 
         // Create an output folder in the script folder
         string outputFolder = Path.Combine(scriptsFolder, "Output");
@@ -84,11 +84,11 @@ class Program
                             }
                         }
 
-                        if (tableName == "dbo.Client" || tableName == "RFSMZ1.dbo.Client")
+                        if (tableName == "tableToCheck" || tableName == "servername.tableToCheck")
                         {
                             string editedQueryFile = Path.Combine(outputFolder, "Edited_Query.txt");
                             File.WriteAllText(editedQueryFile, scriptContent);
-                            Console.WriteLine($"Edited query for dbo.Client written to: {editedQueryFile}");
+                            Console.WriteLine($"Edited query for tableToCheck written to: {editedQueryFile}");
                         }
                     }
 
@@ -99,9 +99,9 @@ class Program
                     // Run sqlcmd command to execute the modified script and redirect output to a file
                     string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
 
-                    string commandArguments = $"-S localhost -d RFSMZ1 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
+                    string commandArguments = $"-S server -d database -U userName -P password -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     if (!PanWlasciciel)
-                        commandArguments = $"sqlcmd -S \"(localdb)\\local\" -d RFSMZ1 -E -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
+                        commandArguments = $"sqlcmd -S \"database\" -d database -E -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     // Set up the process start info
                     if (!PanWlasciciel)
                     {
