@@ -31,14 +31,14 @@ class Program
             ExecuteScriptsInFolder(connectionString, scriptsFolder, outputFolder, sqlcmdPath);
         }
 
-        // Remove errors containing "Cannot insert duplicate key in object"
+        /*// Remove errors containing "Cannot insert duplicate key in object"
         RemoveSpecificErrors(outputFolder, "Cannot insert duplicate key in object");
 
         // Remove errors containing "There is already an object named"
         RemoveSpecificErrors(outputFolder, "There is already an object named");
 
         // Remove errors containing "The statement has been terminated"
-        RemoveSpecificErrors(outputFolder, "The statement has been terminated");
+        RemoveSpecificErrors(outputFolder, "The statement has been terminated");*/
     }
 
     static void ExecuteScriptsInFolder(string connectionString, string folderPath, string outputFolder, string sqlcmdPath)
@@ -65,7 +65,7 @@ class Program
                         if (firstIndex != -1)
                         {
                             scriptContent = scriptContent.Substring(0, firstIndex) +
-                                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL{Environment.NewLine}GO{Environment.NewLine}" +
+                                            $"ALTER TABLE {tableName} NOCHECK CONSTRAINT ALL;{Environment.NewLine}GO{Environment.NewLine}" +
                                             scriptContent.Substring(firstIndex);
                         }
 
@@ -77,7 +77,7 @@ class Program
 
                             if (match.Success)
                             {
-                                a = a.Substring(0, match.Index) + $"GO{Environment.NewLine}ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL{Environment.NewLine}" + a.Substring(match.Index);
+                                a = a.Substring(0, match.Index) + $"GO{Environment.NewLine}ALTER TABLE {tableName} WITH CHECK CHECK CONSTRAINT ALL;{Environment.NewLine}" + a.Substring(match.Index);
 
                                 // Update the script content with the modified content
                                 scriptContent = scriptContent.Substring(0, lastIndex) + a;
@@ -99,7 +99,7 @@ class Program
                     // Run sqlcmd command to execute the modified script and redirect output to a file
                     string outputFileName = Path.Combine(outputFolder, $"{Path.GetFileNameWithoutExtension(scriptFile)}_output.txt");
 
-                    string commandArguments = $"-S localhost -d RFSMZ2 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
+                    string commandArguments = $"-S localhost -d RFSMZ1 -U rufus -P rufus123 -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     if (!PanWlasciciel)
                         commandArguments = $"sqlcmd -S \"(localdb)\\local\" -d RFSMZ1 -E -i \"{tempScriptFile}\" -o \"{outputFileName}\"";
                     // Set up the process start info
