@@ -30,6 +30,11 @@ class Program
             Console.WriteLine($"Execution Round: {i + 1}");
             ExecuteScriptsInFolder(connectionString, scriptsFolder, outputFolder, sqlcmdPath);
         }
+        for (int i = 0; i < 2; i++)
+        {
+            Console.WriteLine($"Execution Round: {i + 1}");
+            ExecuteScriptsInFolder(connectionString, populationScriptFolder, outputFolder, sqlcmdPath);
+        }
 
         /*// Remove errors containing "Cannot insert duplicate key in object"
         RemoveSpecificErrors(outputFolder, "Cannot insert duplicate key in object");
